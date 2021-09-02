@@ -62,19 +62,19 @@ class AugmentTask:
         )
         parser.add_argument(
             "--da-p-augm",
-            default="1",
-            type=str,
+            default=1,
+            type=float,
             help="The probability that data augmentation is applied to an example.",
-        )
-        parser.add_argument(
-            "--da-pitch",
-            default="0,0",
-            type=str,
-            help="The range from which to sample the tempo factor during data augmentation.",
         )
         parser.add_argument(
             "--da-tempo",
             default="1,1",
+            type=str,
+            help="The range from which to sample the tempo factor during data augmentation.",
+        )
+        parser.add_argument(
+            "--da-pitch",
+            default="0,0",
             type=str,
             help="The range from which to sample the pitch value during data augmentation. \
                 Measured in cents (i.e. 100ths of a semitone).",
@@ -105,7 +105,7 @@ class AugmentTask:
 
 @register_task("speech_to_text_augment")
 class SpeechToTextAugmentTask(SpeechToTextTask):
-    
+
     @classmethod
     def add_args(cls, parser):
         SpeechToTextTask.add_args(parser)
