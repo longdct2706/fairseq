@@ -33,8 +33,84 @@ from phost.data import (
 logger = logging.getLogger(__name__)
 
 
+class AugmentTask:
+    @classmethod
+    def add_args(cls, parser):
+        parser.add_argument(
+            "--sampling-rate",
+            type=int,
+            default=16000,
+            help="Sampling rate of audio",
+        )
+        parser.add_argument(
+            "--echo-gainout",
+            default=0.9,
+            type=float,
+            help="Echo gain out for audio augment",
+        )
+        parser.add_argument(
+            "--echo-gainin",
+            default=0.8,
+            type=float,
+            help="Echo gain in for audio augment",
+        )
+        parser.add_argument(
+            "--sample-ratios",
+            default="1",
+            type=str,
+            help="Sample ratios of the train subsets",
+        )
+        parser.add_argument(
+            "--da-p-augm",
+            default="1",
+            type=str,
+            help="The probability that data augmentation is applied to an example.",
+        )
+        parser.add_argument(
+            "--da-pitch",
+            default="0,0",
+            type=str,
+            help="The range from which to sample the tempo factor during data augmentation.",
+        )
+        parser.add_argument(
+            "--da-tempo",
+            default="1,1",
+            type=str,
+            help="The range from which to sample the pitch value during data augmentation. \
+                Measured in cents (i.e. 100ths of a semitone).",
+        )
+        parser.add_argument(
+            "--da-echo-delay",
+            default="0,0",
+            type=str,
+            help="The range from which to sample the echo delay value during data augmentation. \
+                Measured in milliseconds.",
+        )
+        parser.add_argument(
+            "--da-echo-decay",
+            default="0,0",
+            type=str,
+            help="The range from which to sample the echo decay factor during data augmentation.",
+        )
+        parser.add_argument(
+            "--normalize",
+            action="store_true",
+            help="Whether to normalize the audiowave to zero mean and unit variance.",
+        )
+        parser.add_argument(
+            "--interactive-tgt-lang",
+            type=str,
+            help="Target language to be used with Fairseq's interactive mode.",
+        )
+
 @register_task("speech_to_text_augment")
 class SpeechToTextAugmentTask(SpeechToTextTask):
+    
+    @classmethod
+    def add_args(cls, parser):
+        SpeechToTextTask.add_args(parser)
+        AugmentTask.add_args(parser)
+
     def __init__(self, args, tgt_dict):
         super().__init__(args, tgt_dict)
         self.data_cfg = S2TAugmentConfig(Path(args.data) / args.config_yaml)
@@ -93,6 +169,12 @@ class SpeechToTextAugmentTask(SpeechToTextTask):
 
 @register_task("speech_text_joint_to_text_augment")
 class SpeechTextJointToTextAugmentTask(SpeechTextJointToTextTask):
+
+    @classmethod
+    def add_args(cls, parser):
+        SpeechTextJointToTextTask.add_args(parser)
+        AugmentTask.add_args(parser)
+
     def __init__(self, args, src_dict, tgt_dict, infer_tgt_lang_id=None):
         super().__init__(args, src_dict, tgt_dict, infer_tgt_lang_id=infer_tgt_lang_id)
         self.data_cfg = S2TJointAugmentConfig(Path(args.data) / args.config_yaml)

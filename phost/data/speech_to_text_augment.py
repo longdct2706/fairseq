@@ -17,17 +17,17 @@ class S2TAugmentConfig(S2TDataConfig):
 
     @property
     def max_source_positions(self) -> int:
-        """max number of tokens in the source sequence"""
+        """Max number of tokens in the source sequence"""
         return self.config.get("max_source_positions", 6000)
 
     @property
     def max_target_positions(self) -> int:
-        """max number of tokens in the target sequence"""
+        """Max number of tokens in the target sequence"""
         return self.config.get("max_target_positions", 1024)
 
     @property
     def sampling_rate(self) -> int:
-        """sampling rate of audio"""
+        """Sampling rate of audio"""
         return self.config.get("sampling_rate", 16000)
 
     @property
@@ -79,7 +79,7 @@ class S2TAugmentConfig(S2TDataConfig):
 
     @property
     def interactive_tgt_lang(self) -> Optional[str]:
-        """TTarget language to be used with Fairseq's interactive mode."""
+        """Target language to be used with Fairseq's interactive mode."""
         return self.config.get("interactive_tgt_lang", None)
 
 
