@@ -18,8 +18,16 @@ logger = logging.getLogger(__name__)
 
 
 class SpeechToTextJointAugmentDataset(SpeechToTextJointDataset):
-    def __init__(self, cfg: S2TJointAugmentConfig, **kwargs):
-        super().__init__(cfg=cfg, **kwargs)
+    def __init__(
+        self,
+        split: str,
+        is_train_split: bool,
+        cfg: S2TJointAugmentConfig,
+        audio_paths: List[str],
+        n_frames: List[int],
+        **kwargs
+    ):
+        super().__init__(split, is_train_split, cfg, audio_paths, n_frames, **kwargs)
         self.cfg = cfg
         self.data_augment = SpeechToTextAugment(self.cfg)
 

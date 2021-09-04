@@ -53,7 +53,7 @@ class S2TAugmentConfig(S2TDataConfig):
     @property
     def da_pitch(self) -> str:
         """The range from which to sample the tempo factor during data augmentation"""
-        return self.config.get("da_tempo", "0,0")
+        return self.config.get("da_pitch", "0,0")
 
     @property
     def da_tempo(self) -> str:

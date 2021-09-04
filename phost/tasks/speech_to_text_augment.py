@@ -166,6 +166,9 @@ class SpeechToTextAugmentTask(SpeechToTextTask):
                 # Perform a new subsampling at each epoch
                 self.load_dataset(split, epoch)
 
+    def worker_init_fn(worker_id: int) -> None:
+        np.random.seed(np.random.get_state()[1][0] + worker_id)
+
 
 @register_task("speech_text_joint_to_text_augment")
 class SpeechTextJointToTextAugmentTask(SpeechTextJointToTextTask):
@@ -352,3 +355,6 @@ class SpeechTextJointToTextAugmentTask(SpeechTextJointToTextTask):
             if split.startswith("train"):
                 # Perform a new subsampling at each epoch
                 self.load_dataset(split, epoch)
+
+    def worker_init_fn(worker_id: int) -> None:
+        np.random.seed(np.random.get_state()[1][0] + worker_id)
