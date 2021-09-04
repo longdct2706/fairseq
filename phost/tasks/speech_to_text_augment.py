@@ -158,7 +158,7 @@ class SpeechToTextAugmentTask(SpeechToTextTask):
 
     def begin_epoch(self, epoch, model):
         super().begin_epoch(epoch, model)
-        np.random.seed(self.cfg.seed + epoch)
+        np.random.seed(self.data_cfg.seed + epoch)
         if epoch == 1:
             return
         for split in list(self.datasets.keys()):
@@ -348,7 +348,7 @@ class SpeechTextJointToTextAugmentTask(SpeechTextJointToTextTask):
 
     def begin_epoch(self, epoch, model):
         super().begin_epoch(epoch, model)
-        np.random.seed(self.cfg.seed + epoch)
+        np.random.seed(self.data_cfg.seed + epoch)
         if epoch == 1:
             return
         for split in list(self.datasets.keys()):

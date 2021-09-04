@@ -82,6 +82,16 @@ class S2TAugmentConfig(S2TDataConfig):
         """Target language to be used with Fairseq's interactive mode."""
         return self.config.get("interactive_tgt_lang", None)
 
+    @property
+    def max_tokens(self) -> int:
+        """Maximum number of tokens in a batch"""
+        return self.config.get("max_tokens", 100)
+
+    @property
+    def seed(self) -> int:
+        """Random seed."""
+        return self.config.get("seed", 1)        
+
 
 class S2TJointAugmentConfig(S2TJointDataConfig, S2TAugmentConfig):
     def __init__(self, yaml_path: Path):
@@ -93,8 +103,8 @@ class SpeechToTextAugment(object):
         self.cfg = cfg
         self.da_p_augm = float(self.cfg.da_p_augm)
         self.normalize = self.cfg.normalize
-        # self.max_source_len = min(self.cfg.max_source_positions, self.cfg.max_tokens)
-        self.max_source_len = self.cfg.max_source_positions
+        self.max_source_len = min(self.cfg.max_source_positions, self.cfg.max_tokens)
+        # self.max_source_len = self.cfg.max_source_positions
 
         self.sr = self.cfg.sampling_rate
         self.echo_gainin = self.cfg.echo_gainin
