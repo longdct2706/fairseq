@@ -89,7 +89,7 @@ class SpeechToTextJointAugmentDatasetCreator(SpeechToTextJointDatasetCreator):
         src_langs = [s.get(cls.KEY_SRC_LANG, cls.DEFAULT_LANG) for s in samples]
         tgt_langs = [s.get(cls.KEY_TGT_LANG, cls.DEFAULT_LANG) for s in samples]
         return SpeechToTextJointAugmentDataset(
-            split_name=split_name,
+            split=split_name,
             is_train_split=is_train_split,
             cfg=cfg,
             audio_paths=audio_paths,

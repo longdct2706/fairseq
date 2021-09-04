@@ -45,11 +45,11 @@ fairseq-train ${DATADIR} \
   --warmup-updates 10000 --clip-norm 10.0 --seed 1 --update-freq 1 \
   --log-format simple --log-interval 100  --keep-last-epochs 10 \
   --skip-invalid-size-inputs-valid-test \
-  --da-pitch ${DA_PITCH} \
-  --da-p-augm ${DA_P_AUGM} \
-  --da-tempo ${DA_TEMPO} \
-  --da-echo-delay ${DA_ECHO_DELAY} \
-  --da-echo-decay ${DA_ECHO_DECAY} \
+  --da-p-augm=${DA_P_AUGM} \
+  --da-pitch=${DA_PITCH} \
+  --da-tempo=${DA_TEMPO} \
+  --da-echo-delay=${DA_ECHO_DELAY} \
+  --da-echo-decay=${DA_ECHO_DECAY} \
   --normalize
 
 python ../scripts/average_checkpoints.py \
