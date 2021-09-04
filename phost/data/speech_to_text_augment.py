@@ -93,7 +93,8 @@ class SpeechToTextAugment(object):
         self.cfg = cfg
         self.da_p_augm = self.cfg.da_p_augm
         self.normalize = self.cfg.normalize
-        self.max_source_len = min(self.cfg.max_source_positions, self.cfg.max_tokens)
+        # self.max_source_len = min(self.cfg.max_source_positions, self.cfg.max_tokens)
+        self.max_source_len = self.cfg.max_source_positions
 
         self.sr = self.cfg.sampling_rate
         self.echo_gainin = self.cfg.echo_gainin

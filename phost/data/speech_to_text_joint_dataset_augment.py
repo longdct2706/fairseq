@@ -35,7 +35,7 @@ class SpeechToTextJointAugmentDataset(SpeechToTextJointDataset):
         s2t_dataset_item = super().__getitem__(index)
 
         # apply effects or keep the original audiowave
-        if self.is_train_split and np.random.rand() < self.p_augm:
+        if self.is_train_split and np.random.rand() < self.data_augment.da_p_augm:
             s2t_dataset_item.source = self.data_augment.augment(s2t_dataset_item.source)
 
         # normalize audiowave

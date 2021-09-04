@@ -44,7 +44,7 @@ class SpeechToTextAugmentDataset(SpeechToTextDataset):
         source = torch.from_numpy(source).float()
 
         # apply effects or keep the original audiowave
-        if self.is_train_split and np.random.rand() < self.p_augm:
+        if self.is_train_split and np.random.rand() < self.data_augment.da_p_augm:
             source = self.data_augment.augment(source)
 
         # normalize audiowave
