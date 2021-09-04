@@ -46,9 +46,9 @@ class S2TAugmentConfig(S2TDataConfig):
         return self.config.get("sample_ratios", "1")
 
     @property
-    def da_p_augm(self) -> str:
+    def da_p_augm(self) -> float:
         """The probability that data augmentation is applied to an example."""
-        return self.config.get("da_p_augm", "1")
+        return self.config.get("da_p_augm", 1)
 
     @property
     def da_pitch(self) -> str:
@@ -91,7 +91,7 @@ class S2TJointAugmentConfig(S2TJointDataConfig, S2TAugmentConfig):
 class SpeechToTextAugment(object):
     def __init__(self, cfg: Union[S2TAugmentConfig, S2TJointAugmentConfig]):
         self.cfg = cfg
-        self.da_p_augm = self.cfg.da_p_augm
+        self.da_p_augm = float(self.cfg.da_p_augm)
         self.normalize = self.cfg.normalize
         # self.max_source_len = min(self.cfg.max_source_positions, self.cfg.max_tokens)
         self.max_source_len = self.cfg.max_source_positions
