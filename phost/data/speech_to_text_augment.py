@@ -73,9 +73,9 @@ class S2TAugmentConfig(S2TDataConfig):
         return self.config.get("da_echo_decay", "0,0")
 
     @property
-    def normalize(self) -> bool:
+    def normalize_augm(self) -> bool:
         """Whether to normalize the audiowave to zero mean and unit variance."""
-        return self.config.get("normalize", True)
+        return self.config.get("normalize_augm", True)
 
     @property
     def interactive_tgt_lang(self) -> Optional[str]:

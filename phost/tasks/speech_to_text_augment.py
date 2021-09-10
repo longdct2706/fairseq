@@ -93,7 +93,7 @@ class AugmentTask:
             help="The range from which to sample the echo decay factor during data augmentation.",
         )
         parser.add_argument(
-            "--normalize",
+            "--normalize-augm",
             action="store_true",
             help="Whether to normalize the audiowave to zero mean and unit variance.",
         )
