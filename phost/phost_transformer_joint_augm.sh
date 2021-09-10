@@ -21,8 +21,8 @@ echo   Number of Tasks Allocated      = $SLURM_NTASKS
 echo   Number of Cores/Task Allocated = $SLURM_CPUS_PER_TASK
 
 source miniconda3/bin/activate
-conda activate fairseq
-cd fairseq
+conda activate iwslt21
+cd ${root_dir}/test_augment/fairseq/phost
 
 ST_SAVE_DIR=${root_dir}/st_transformer_augment_ckpt
 ASR_SAVE_DIR=${root_dir}/asr_transformer_augment_ckpt
