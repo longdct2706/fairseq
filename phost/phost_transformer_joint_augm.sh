@@ -26,11 +26,13 @@ cd ${root_dir}/test_augment/fairseq/phost
 
 ST_SAVE_DIR=${root_dir}/st_transformer_augment_ckpt
 ASR_SAVE_DIR=${root_dir}/asr_transformer_augment_ckpt
-LOG_DIR=${root_dir}/test_augment/log
+LOG_DIR=${root_dir}/test_augment/log/transformer_augment_asr-st
 TENSORBOARD_DIR=${LOG_DIR}/tensorboard
 DATADIR=${root_dir}/prep_data
 CHECKPOINT_FILENAME=avg_last_10_checkpoint.pt
 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+
+mkdir -p $TENSORBOARD_DIR
 
 DA_P_AUGM=0.8
 DA_PITCH="-300,300"
@@ -63,11 +65,13 @@ python scripts/average_checkpoints.py \
     --inputs ${ASR_SAVE_DIR} --num-epoch-checkpoints 10 --output "${ASR_SAVE_DIR}/${CHECKPOINT_FILENAME}"
 
 fairseq-generate ${DATADIR} \
+  --user-dir ./ \
   --config-yaml config_asr.yaml --gen-subset dev_asr --task speech_to_text_augment \
   --path ${ASR_SAVE_DIR}/${CHECKPOINT_FILENAME} --max-tokens 50000 --beam 5 \
   --scoring wer --wer-tokenizer 13a --wer-lowercase --wer-remove-punct | tee ${LOG_DIR}/transformer_asr_augment.dev.log
 
 fairseq-generate ${DATADIR} \
+  --user-dir ./ \
   --config-yaml config_asr.yaml --gen-subset test_asr --task speech_to_text_augment \
   --path ${ASR_SAVE_DIR}/${CHECKPOINT_FILENAME} --max-tokens 50000 --beam 5 \
   --scoring wer --wer-tokenizer 13a --wer-lowercase --wer-remove-punct | tee ${LOG_DIR}/transformer_asr_augment.test.log
@@ -96,11 +100,13 @@ python scripts/average_checkpoints.py \
     --inputs ${ST_SAVE_DIR} --num-epoch-checkpoints 10 --output "${ST_SAVE_DIR}/${CHECKPOINT_FILENAME}"
 
 fairseq-generate ${DATADIR} \
+  --user-dir ./ \
   --config-yaml config_st.yaml --gen-subset dev_st --task speech_to_text_augment \
   --path ${ST_SAVE_DIR}/${CHECKPOINT_FILENAME} \
   --max-tokens 50000 --beam 5 --scoring sacrebleu | tee ${LOG_DIR}/transformer_st_augment.dev.log
 
 fairseq-generate ${DATADIR} \
+  --user-dir ./ \
   --config-yaml config_st.yaml --gen-subset test_st --task speech_to_text_augment \
   --path ${ST_SAVE_DIR}/${CHECKPOINT_FILENAME} \
   --max-tokens 50000 --beam 5 --scoring sacrebleu | tee ${LOG_DIR}/transformer_st_augment.test.log

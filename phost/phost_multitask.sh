@@ -28,11 +28,13 @@ echo $(pwd)
 
 SAVE_DIR=${root_dir}/test_augment/multitask_ckpt
 PRETRAINED_DIR=${root_dir}/test_augment/pretrained_multitask
-LOG_DIR=${root_dir}/test_augment/log
+LOG_DIR=${root_dir}/test_augment/log/multitask
 TENSORBOARD_DIR=${LOG_DIR}/tensorboard
 DATADIR=${root_dir}/test_augment/prep_data
 CHECKPOINT_FILENAME=avg_last_5_checkpoint.pt
 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+
+mkdir -p $TENSORBOARD_DIR
 
 LEARNING_RATE=5e-5
 MAX_UPDATE=1000

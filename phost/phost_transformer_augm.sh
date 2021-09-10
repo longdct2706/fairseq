@@ -25,11 +25,13 @@ conda activate iwslt21
 cd ${root_dir}/test_augment/fairseq/phost
 
 ST_SAVE_DIR=${root_dir}/test_augment/st_transformer_augment_ckpt
-LOG_DIR=${root_dir}/test_augment/log
+LOG_DIR=${root_dir}/test_augment/log/transformer_augment
 TENSORBOARD_DIR=${LOG_DIR}/tensorboard
 DATADIR=${root_dir}/prep_data
 CHECKPOINT_FILENAME=avg_10_last_ckpt.pt
 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+
+mkdir -p $TENSORBOARD_DIR
 
 DA_P_AUGM=0.8
 DA_PITCH="-300,300"
