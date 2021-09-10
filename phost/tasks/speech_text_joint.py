@@ -2,190 +2,135 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-
 import logging
 import os
+from argparse import Namespace
 from pathlib import Path
 
-import numpy as np
-from fairseq.data import Dictionary
-from fairseq.data.audio.multi_modality_dataset import (
-    LangPairMaskDataset,
-    ModalityDatasetItem,
-    MultiModalityDataset,
+import torch
+from fairseq.data import (
+    encoders,
+    Dictionary,
+    ResamplingDataset,
+    TransformEosLangPairDataset,
+    ConcatDataset,
 )
 from fairseq.data.iterators import GroupedEpochBatchIterator
+from fairseq.data.audio.multi_modality_dataset import (
+    MultiModalityDataset,
+    LangPairMaskDataset,
+    ModalityDatasetItem,
+)
+from fairseq.data.audio.speech_to_text_dataset import SpeechToTextDataset, SpeechToTextDatasetCreator
+from fairseq.data.audio.speech_to_text_joint_dataset import (
+    S2TJointDataConfig,
+    SpeechToTextJointDatasetCreator,
+)
 from fairseq.tasks import register_task
 from fairseq.tasks.speech_to_text import SpeechToTextTask
-from .speech_text_joint import (
-    SpeechTextJointToTextTask,
-)
-
-from phost.data import (
-    S2TAugmentConfig,
-    SpeechToTextAugmentDataset,
-    SpeechToTextAugmentDatasetCreator,
-    S2TJointAugmentConfig,
-    SpeechToTextJointAugmentDataset,
-    SpeechToTextJointAugmentDatasetCreator,
-)
+from fairseq.tasks.translation import load_langpair_dataset
 
 logger = logging.getLogger(__name__)
+LANG_TAG_TEMPLATE = "<lang:{}>"
 
 
-class AugmentTask:
+@register_task("speech_text_joint_to_text")
+class SpeechTextJointToTextTask(SpeechToTextTask):
+    """
+    Task for joint training speech and text to text.
+    """
+
     @classmethod
     def add_args(cls, parser):
+        """Add task-specific arguments to the parser."""
+        super(SpeechTextJointToTextTask, cls).add_args(parser)
+        ###
         parser.add_argument(
-            "--sampling-rate",
+            "--parallel-text-data",
+            default="",
+            help="path to parallel text data directory",
+        )
+        parser.add_argument(
+            "--max-tokens-text",
             type=int,
-            default=16000,
-            help="Sampling rate of audio",
+            metavar="N",
+            help="maximum tokens for encoder text input ",
         )
         parser.add_argument(
-            "--echo-gainout",
-            default=0.9,
-            type=float,
-            help="Echo gain out for audio augment",
+            "--max-positions-text",
+            type=int,
+            metavar="N",
+            default=400,
+            help="maximum tokens for per encoder text input ",
         )
         parser.add_argument(
-            "--echo-gainin",
-            default=0.8,
-            type=float,
-            help="Echo gain in for audio augment",
+            "--langpairs",
+            default=None,
+            metavar="S",
+            help='language pairs for text training, separated with ","',
         )
         parser.add_argument(
-            "--sample-ratios",
-            default="1",
-            type=str,
-            help="Sample ratios of the train subsets",
-        )
-        parser.add_argument(
-            "--da-p-augm",
+            "--speech-sample-ratio",
             default=1,
             type=float,
-            help="The probability that data augmentation is applied to an example.",
+            metavar="N",
+            help="Multiple Ratio for speech dataset with transcripts ",
         )
         parser.add_argument(
-            "--da-tempo",
-            default="1,1",
-            type=str,
-            help="The range from which to sample the tempo factor during data augmentation.",
+            "--text-sample-ratio",
+            default=1,
+            type=float,
+            metavar="N",
+            help="Multiple Ratio for text set ",
         )
         parser.add_argument(
-            "--da-pitch",
-            default="0,0",
-            type=str,
-            help="The range from which to sample the pitch value during data augmentation. \
-                Measured in cents (i.e. 100ths of a semitone).",
-        )
-        parser.add_argument(
-            "--da-echo-delay",
-            default="0,0",
-            type=str,
-            help="The range from which to sample the echo delay value during data augmentation. \
-                Measured in milliseconds.",
-        )
-        parser.add_argument(
-            "--da-echo-decay",
-            default="0,0",
-            type=str,
-            help="The range from which to sample the echo decay factor during data augmentation.",
-        )
-        parser.add_argument(
-            "--normalize-augm",
+            "--update-mix-data",
             action="store_true",
-            help="Whether to normalize the audiowave to zero mean and unit variance.",
+            help="use mixed data in one update when update-freq  > 1",
         )
         parser.add_argument(
-            "--interactive-tgt-lang",
-            type=str,
-            help="Target language to be used with Fairseq's interactive mode.",
+            "--load-speech-only",
+            action="store_true",
+            help="load speech data only",
         )
-
-@register_task("speech_to_text_augment")
-class SpeechToTextAugmentTask(SpeechToTextTask):
-
-    @classmethod
-    def add_args(cls, parser):
-        SpeechToTextTask.add_args(parser)
-        AugmentTask.add_args(parser)
-
-    def __init__(self, args, tgt_dict):
-        super().__init__(args, tgt_dict)
-        self.data_cfg = S2TAugmentConfig(Path(args.data) / args.config_yaml)
-
-    @classmethod
-    def setup_task(cls, args, **kwargs):
-        data_cfg = S2TAugmentConfig(Path(args.data) / args.config_yaml)
-        dict_path = Path(args.data) / data_cfg.vocab_filename
-        if not dict_path.is_file():
-            raise FileNotFoundError(f"Dict not found: {dict_path.as_posix()}")
-        tgt_dict = Dictionary.load(dict_path.as_posix())
-        logger.info(
-            f"dictionary size ({data_cfg.vocab_filename}): " f"{len(tgt_dict):,}"
+        parser.add_argument(
+            "--mask-text-ratio",
+            type=float,
+            metavar="V",
+            default=0.0,
+            help="mask V source tokens for text only mode",
         )
-
-        if getattr(args, "train_subset", None) is not None:
-            if not all(s.startswith("train") for s in args.train_subset.split(",")):
-                raise ValueError('Train splits should be named like "train*".')
-        return cls(args, tgt_dict)
-
-    def load_dataset(self, split, epoch=1, combine=False, **kwargs):
-        is_train_split = split.startswith("train")
-        pre_tokenizer = self.build_tokenizer(self.args)
-        bpe_tokenizer = self.build_bpe(self.args)
-        self.datasets[split] = SpeechToTextAugmentDatasetCreator.from_tsv(
-            self.args.data,
-            self.data_cfg,
-            split,
-            self.tgt_dict,
-            pre_tokenizer,
-            bpe_tokenizer,
-            is_train_split=is_train_split,
-            epoch=epoch,
-            seed=self.args.seed,
+        parser.add_argument(
+            "--mask-text-type",
+            default="random",
+            choices=["random", "tail"],
+            help="mask text typed",
         )
-
-    def build_dataset_for_inference(self, src_tokens, src_lengths, **kwargs):
-        return SpeechToTextAugmentDataset(
-            split="interactive",
-            is_train_split=False,
-            cfg=self.data_cfg,
-            audio_paths=src_tokens,
-            n_frames=src_lengths,
+        parser.add_argument(
+            "--noise-token",
+            default="",
+            help="noise token for masking src text tokens if mask-text-ratio > 0",
         )
-
-    def begin_epoch(self, epoch, model):
-        super().begin_epoch(epoch, model)
-        np.random.seed(self.data_cfg.seed + epoch)
-        if epoch == 1:
-            return
-        for split in list(self.datasets.keys()):
-            if split.startswith("train"):
-                # Perform a new subsampling at each epoch
-                self.load_dataset(split, epoch)
-
-    def worker_init_fn(worker_id: int) -> None:
-        np.random.seed(np.random.get_state()[1][0] + worker_id)
-
-
-@register_task("speech_text_joint_to_text_augment")
-class SpeechTextJointToTextAugmentTask(SpeechTextJointToTextTask):
-
-    @classmethod
-    def add_args(cls, parser):
-        SpeechTextJointToTextTask.add_args(parser)
-        AugmentTask.add_args(parser)
+        parser.add_argument(
+            "--infer-target-lang",
+            default="",
+            metavar="S",
+            help="target language for inference",
+        )
 
     def __init__(self, args, src_dict, tgt_dict, infer_tgt_lang_id=None):
-        super().__init__(args, src_dict, tgt_dict, infer_tgt_lang_id=infer_tgt_lang_id)
-        self.data_cfg = S2TJointAugmentConfig(Path(args.data) / args.config_yaml)
+        super().__init__(args, tgt_dict)
+        self.src_dict = src_dict
+        self.data_cfg = S2TJointDataConfig(Path(args.data) / args.config_yaml)
+        assert self.tgt_dict.pad() == self.src_dict.pad()
+        assert self.tgt_dict.eos() == self.src_dict.eos()
+        self.speech_only = args.load_speech_only
+        self._infer_tgt_lang_id = infer_tgt_lang_id
 
     @classmethod
     def setup_task(cls, args, **kwargs):
         """Setup the task (e.g., load dictionaries)."""
-        data_cfg = S2TJointAugmentConfig(Path(args.data) / args.config_yaml)
+        data_cfg = S2TJointDataConfig(Path(args.data) / args.config_yaml)
         tgt_dict_path = Path(args.data) / data_cfg.vocab_filename
         src_dict_path = Path(args.data) / data_cfg.src_vocab_filename
         if (not os.path.isfile(src_dict_path)) or (not os.path.isfile(tgt_dict_path)):
@@ -208,12 +153,80 @@ class SpeechTextJointToTextAugmentTask(SpeechTextJointToTextTask):
                 )
         infer_tgt_lang_id = None
         if args.infer_target_lang != "" and data_cfg.prepend_tgt_lang_tag_no_change:
-            tgt_lang_tag = SpeechToTextJointAugmentDataset.LANG_TAG_TEMPLATE.format(
+            tgt_lang_tag = SpeechToTextDataset.LANG_TAG_TEMPLATE.format(
                 args.infer_target_lang
             )
             infer_tgt_lang_id = tgt_dict.index(tgt_lang_tag)
             assert infer_tgt_lang_id != tgt_dict.unk()
         return cls(args, src_dict, tgt_dict, infer_tgt_lang_id=infer_tgt_lang_id)
+
+    def load_langpair_dataset(self, prepend_tgt_lang_tag=False, sampling_alpha=1.0, epoch=0):
+        lang_pairs = []
+        text_dataset = None
+        split = "train"
+        for lp in self.args.langpairs.split(","):
+            src, tgt = lp.split("-")
+            text_dataset = load_langpair_dataset(
+                self.args.parallel_text_data,
+                split,
+                src,
+                self.src_dict,
+                tgt,
+                self.tgt_dict,
+                combine=True,
+                dataset_impl=None,
+                upsample_primary=1,
+                left_pad_source=False,
+                left_pad_target=False,
+                max_source_positions=self.args.max_positions_text,
+                max_target_positions=self.args.max_target_positions,
+                load_alignments=False,
+                truncate_source=False,
+            )
+            if prepend_tgt_lang_tag:
+                # TODO
+                text_dataset = TransformEosLangPairDataset(
+                    text_dataset,
+                    src_eos=self.src_dict.eos(),
+                    tgt_bos=self.tgt_dict.eos(),  # 'prev_output_tokens' starts with eos
+                    new_tgt_bos=self.tgt_dict.index(LANG_TAG_TEMPLATE.format(tgt)),
+                )
+            lang_pairs.append(text_dataset)
+        if len(lang_pairs) > 1:
+            if sampling_alpha != 1.0:
+                size_ratios = SpeechToTextDatasetCreator.get_size_ratios(
+                    self.args.langpairs.split(","),
+                    [len(s) for s in lang_pairs],
+                    alpha=sampling_alpha,
+                )
+                lang_pairs = [
+                    ResamplingDataset(
+                        d, size_ratio=r, epoch=epoch, replace=(r >= 1.0)
+                    )
+                    for d, r in zip(lang_pairs, size_ratios)
+                ]
+            return ConcatDataset(lang_pairs)
+        return text_dataset
+
+    def inference_step(
+        self, generator, models, sample, prefix_tokens=None, constraints=None
+    ):
+        with torch.no_grad():
+            return generator.generate(
+                models,
+                sample,
+                prefix_tokens=prefix_tokens,
+                constraints=constraints,
+                bos_token=self._infer_tgt_lang_id,
+            )
+
+    def build_src_tokenizer(self, args):
+        logger.info(f"src-pre-tokenizer: {self.data_cfg.src_pre_tokenizer}")
+        return encoders.build_tokenizer(Namespace(**self.data_cfg.src_pre_tokenizer))
+
+    def build_src_bpe(self, args):
+        logger.info(f"tokenizer: {self.data_cfg.src_bpe_tokenizer}")
+        return encoders.build_bpe(Namespace(**self.data_cfg.src_bpe_tokenizer))
 
     def load_dataset(self, split, epoch=1, combine=False, **kwargs):
         """Load a given dataset split.
@@ -226,7 +239,7 @@ class SpeechTextJointToTextAugmentTask(SpeechTextJointToTextTask):
         bpe_tokenizer = self.build_bpe(self.args)
         src_pre_tokenizer = self.build_src_tokenizer(self.args)
         src_bpe_tokenizer = self.build_src_bpe(self.args)
-        ast_dataset = SpeechToTextJointAugmentDatasetCreator.from_tsv(
+        ast_dataset = SpeechToTextJointDatasetCreator.from_tsv(
             self.args.data,
             self.data_cfg,
             split,
@@ -286,6 +299,18 @@ class SpeechTextJointToTextAugmentTask(SpeechTextJointToTextTask):
             ast_dataset = MultiModalityDataset(mdsets)
         self.datasets[split] = ast_dataset
 
+    @property
+    def target_dictionary(self):
+        """Return the :class:`~fairseq.data.Dictionary` for the language
+        model."""
+        return self.tgt_dict
+
+    @property
+    def source_dictionary(self):
+        """Return the source :class:`~fairseq.data.Dictionary` (if applicable
+        for this task)."""
+        return None if self.speech_only else self.src_dict
+
     def get_batch_iterator(
         self,
         dataset,
@@ -304,7 +329,7 @@ class SpeechTextJointToTextAugmentTask(SpeechTextJointToTextTask):
     ):
 
         if not isinstance(dataset, MultiModalityDataset):
-            return super(SpeechTextJointToTextAugmentTask, self).get_batch_iterator(
+            return super(SpeechTextJointToTextTask, self).get_batch_iterator(
                 dataset,
                 max_tokens,
                 max_sentences,
@@ -345,16 +370,3 @@ class SpeechTextJointToTextAugmentTask(SpeechTextJointToTextTask):
         )
         self.dataset_to_epoch_iter[dataset] = {}  # refresh it every epoch
         return epoch_iter
-
-    def begin_epoch(self, epoch, model):
-        super().begin_epoch(epoch, model)
-        np.random.seed(self.data_cfg.seed + epoch)
-        if epoch == 1:
-            return
-        for split in list(self.datasets.keys()):
-            if split.startswith("train"):
-                # Perform a new subsampling at each epoch
-                self.load_dataset(split, epoch)
-
-    def worker_init_fn(worker_id: int) -> None:
-        np.random.seed(np.random.get_state()[1][0] + worker_id)
