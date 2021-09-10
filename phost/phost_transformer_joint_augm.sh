@@ -94,7 +94,7 @@ fairseq-train ${DATADIR} \
   --da-tempo=${DA_TEMPO} \
   --da-echo-delay=${DA_ECHO_DELAY} \
   --da-echo-decay=${DA_ECHO_DECAY} \
-  --normalize | tee ${LOG_DIR}/transformer_st_augment.train.log
+  --normalize-augm | tee ${LOG_DIR}/transformer_st_augment.train.log
 
 python scripts/average_checkpoints.py \
     --inputs ${ST_SAVE_DIR} --num-epoch-checkpoints 10 --output "${ST_SAVE_DIR}/${CHECKPOINT_FILENAME}"

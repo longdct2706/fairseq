@@ -102,7 +102,7 @@ class SpeechToTextAugment(object):
     def __init__(self, cfg: Union[S2TAugmentConfig, S2TJointAugmentConfig]):
         self.cfg = cfg
         self.da_p_augm = float(self.cfg.da_p_augm)
-        self.normalize = self.cfg.normalize
+        self.normalize = self.cfg.normalize_augm
         self.max_source_len = min(self.cfg.max_source_positions, self.cfg.max_tokens)
         # self.max_source_len = self.cfg.max_source_positions
 
